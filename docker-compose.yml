@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    networks:
+      - app-network
+    depends_on:
+      - upload-service
+      - status-service
+    environment:
+      - VITE_BACKEND_URL=http://upload-service:8001
+      - VITE_STATUS_URL=http://status-service:8002
+
+  upload-service:
+    build:
+      context: ./backend/services
+      dockerfile: upload-service/Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend/services/upload-service:/app
+    environment:
+      - PORT=8001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - app-network
+
+  status-service:
+    build:
+      context: ./backend/services
+      dockerfile: status-service/Dockerfile
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./backend/services/status-service:/app
+    environment:
+      - PORT=8002
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - app-network
+
+  processing-service:
+    build:
+      context: ./backend/services
+      dockerfile: processing-service/Dockerfile
+    volumes:
+      - ./backend/services/processing-service:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis_data:
